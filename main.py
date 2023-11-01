@@ -6,14 +6,38 @@ from telethon.sync import TelegramClient, events
 from telethon.tl import functions
 from telethon.tl.custom import Button
 
-# A dictionary to keep track of users who have started a conversation
+# Словарь для отслеживания пользователей, которые начали разговор
 started_conversations = {}
 
-# A dictionary to keep track of user selections
+# Словарь для хранения выбора пользователей
 user_selections = {}
 
+# Словарь для хранения ссылок
+urls = {
+    "Математика": {
+        "МОШ": {
+            "Материалы": "https://mos.olimpiada.ru/tasks/math",
+            "Сайт": "https://mos.olimpiada.ru/olymp/math"
+        },
+        "Всеросс": {
+            "Материалы": "https://olimpiada.ru/activity/72/tasks",
+            "Сайт": "https://vos.olimpiada.ru/math/2023_2024"
+        }
+    },
+    "Программирование": {
+        "МОШ": {
+            "Материалы": "https://mos-inf.olimpiada.ru/mosh_past",
+            "Сайт": "https://mos-inf.olimpiada.ru/"
+        },
+        "Всеросс": {
+            "Материалы": "https://olimpiada.ru/activity/73/tasks",
+            "Сайт": "https://olympiads.ru/moscow/2023-24/vsosh/index.shtml"
+        }
+    }
+}
+
 async def send_recommendation(client, chat_id):
-    # Check if the user has started a conversation before
+    # Проверяем, начинал ли пользователь разговор ранее
     if chat_id not in started_conversations:
         message, buttons = start_message()
         await client.send_message(chat_id, message, buttons=buttons, link_preview=False)
@@ -33,7 +57,7 @@ async def main():
             message, buttons = start_message()
             await event.respond(message, buttons=buttons)
 
-            # Mark the user as having started a conversation
+            # Отмечаем пользователя как начавшего разговор
             started_conversations[chat_id] = True
             user_selections[chat_id] = {}
 
@@ -46,7 +70,7 @@ async def main():
 
         @client.on(events.CallbackQuery(data=b"/other"))
         async def other(event):
-            # Add handling for other commands here
+            # Добавьте обработку других команд здесь
             await event.respond("Вы выбрали 'Другое'. Добавьте соответствующий обработчик для этой команды.")
             await send_recommendation(client, chat_id)
 
@@ -109,7 +133,7 @@ async def main():
         async def mosh(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("Напоминание", b"/reminder"), Button.inline("Материалы", b"/materials"), Button.inline("Сайт", b"/site")]
+                [Button.inline("Напоминание", b"/mosh_reminder"), Button.inline("Материалы", b"/mosh_materials"), Button.inline("Сайт", b"/mosh_site")]
             ]
             await event.respond("МОШ:", buttons=buttons)
             user_selections[chat_id]["subject_type"] = "МОШ"
@@ -118,50 +142,72 @@ async def main():
         async def vseross(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("Напоминание", b"/reminder"), Button.inline("Материалы", b"/materials"), Button.inline("Сайт", b"/site")]
+                [Button.inline("Напоминание", b"/vseross_reminder"), Button.inline("Материалы", b"/vseross_materials"), Button.inline("Сайт", b"/vseross_site")]
             ]
             await event.respond("Всеросс:", buttons=buttons)
             user_selections[chat_id]["subject_type"] = "Всеросс"
 
-        @client.on(events.CallbackQuery(data=b"/reminder"))
-        async def reminder(event):
+        @client.on(events.CallbackQuery(data=b"/mosh_reminder"))
+        async def mosh_reminder(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
             await event.respond(f"{subject_type} Напоминание")
 
-        @client.on(events.CallbackQuery(data=b"/materials"))
-        async def materials(event):
+        @client.on(events.CallbackQuery(data=b"/vseross_reminder"))
+        async def vseross_reminder(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
-            if user_selections[chat_id]["subject"] == "Математика":
-                if subject_type == "МОШ":
-                    await event.respond("https://mos.olimpiada.ru/tasks/math")
-                elif subject_type == "Всеросс":
-                    await event.respond("https://olimpiada.ru/activity/72/tasks")
-            elif user_selections[chat_id]["subject"] == "Программирование":
-                if subject_type == "МОШ":
-                    await event.respond("https://mos-inf.olimpiada.ru/mosh_past")
-                elif subject_type == "Всеросс":
-                    await event.respond("https://olimpiada.ru/activity/73/tasks")
-            else:
-                await event.respond("Subject not found")
+            await event.respond(f"{subject_type} Напоминание")
 
-        @client.on(events.CallbackQuery(data=b"/site"))
-        async def site(event):
+        @client.on(events.CallbackQuery(data=b"/mosh_materials"))
+        async def mosh_materials(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
-            if user_selections[chat_id]["subject"] == "Математика":
-                if subject_type == "МОШ":
-                    await event.respond("https://mos.olimpiada.ru/olymp/math")
-                elif subject_type == "Всеросс":
-                    await event.respond("https://vos.olimpiada.ru/math/2023_2024")
-            elif user_selections[chat_id]["subject"] == "Программирование":
-                if subject_type == "МОШ":
-                    await event.respond("https://mos-inf.olimpiada.ru/")
-                elif subject_type == "Всеросс":
-                    await event.respond("https://olympiads.ru/moscow/2023-24/vsosh/index.shtml")
+            subject = user_selections.get(chat_id, {}).get("subject")
+            url = urls.get(subject, {}).get(subject_type, {}).get("Материалы")
+
+            if subject_type == "МОШ" and url:
+                await event.respond("Архив заданий МОШ", buttons=[Button.url("Материалы", url)])
+            elif subject_type == "Всеросс" and url:
+                await event.respond("Материалы", buttons=[Button.url("Материалы", url)])
             else:
-                await event.respond("Site not found")
+                await event.respond("Ссылка не найдена")
+
+        @client.on(events.CallbackQuery(data=b"/vseross_materials"))
+        async def vseross_materials(event):
+            chat_id = event.chat_id
+            subject_type = user_selections.get(chat_id, {}).get("subject_type")
+            subject = user_selections.get(chat_id, {}).get("subject")
+            url = urls.get(subject, {}).get(subject_type, {}).get("Материалы")
+
+            if url:
+                await event.respond("Архив заданий Всеросс", buttons=[Button.url("Материалы", url)])
+            else:
+                await event.respond("Ссылка не найдена")
+
+        @client.on(events.CallbackQuery(data=b"/mosh_site"))
+        async def mosh_site(event):
+            chat_id = event.chat_id
+            subject_type = user_selections.get(chat_id, {}).get("subject_type")
+            subject = user_selections.get(chat_id, {}).get("subject")
+            url = urls.get(subject, {}).get(subject_type, {}).get("Сайт")
+
+            if url:
+                await event.respond(f"Официальный сайт {subject_type}", buttons=[Button.url("Сайт", url)])
+            else:
+                await event.respond("Ссылка не найдена")
+
+        @client.on(events.CallbackQuery(data=b"/vseross_site"))
+        async def vseross_site(event):
+            chat_id = event.chat_id
+            subject_type = user_selections.get(chat_id, {}).get("subject_type")
+            subject = user_selections.get(chat_id, {}).get("subject")
+            url = urls.get(subject, {}).get(subject_type, {}).get("Сайт")
+
+            if url:
+                await event.respond(f"Официальный сайт {subject_type}", buttons=[Button.url("Сайт", url)])
+            else:
+                await event.respond("Ссылка не найдена")
 
         print("Бот запущен. Нажмите Ctrl+C, чтобы остановить.")
         await client.run_until_disconnected()
