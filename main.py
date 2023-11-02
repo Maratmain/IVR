@@ -5,6 +5,29 @@ bot_token = '6643259676:AAHuAQXWS4dZZSV17ql6vP2v19cxaBpWMbc'
 from telethon.sync import TelegramClient, events
 from telethon.tl import functions
 from telethon.tl.custom import Button
+import sqlite3
+import schedule
+import time
+
+# Создание базы данных и подключение к ней
+conn = sqlite3.connect('user_reminders.db')
+cursor = conn.cursor()
+
+# Создание таблицы для хранения данных о пользователях и запросах
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS user_reminders (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER,
+        index INTEGER,
+        days_before_olympiad INTEGER
+    )
+''')
+
+# Сохранение изменений в базе данных
+conn.commit()
+
+# Закрытие соединения с базой данных
+conn.close()
 
 # Словарь для отслеживания пользователей, которые начали разговор
 started_conversations = {}
@@ -55,9 +78,7 @@ async def main():
         async def start(event):
             chat_id = event.chat_id
             message, buttons = start_message()
-            await event.respond(message, buttons=buttons)
-
-            # Отмечаем пользователя как начавшего разговор
+            await event.respond(message, buttons=buttons, link_preview=False)
             started_conversations[chat_id] = True
             user_selections[chat_id] = {}
 
@@ -70,7 +91,6 @@ async def main():
 
         @client.on(events.CallbackQuery(data=b"/other"))
         async def other(event):
-            # Добавьте обработку других команд здесь
             await event.respond("Вы выбрали 'Другое'. Добавьте соответствующий обработчик для этой команды.")
             await send_recommendation(client, chat_id)
 
@@ -124,7 +144,7 @@ async def main():
         async def physics(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("МОШ", b"/mosh"), Button.inline("Всеросс", b"/vseross")]
+                [Button.inline("МОШ", b"/mosh"), Button.inline("Vseross", b"/vseross")]
             ]
             await event.respond("Физика:", buttons=buttons)
             user_selections[chat_id]["subject"] = "Физика"
@@ -133,7 +153,8 @@ async def main():
         async def mosh(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("Напоминание", b"/mosh_reminder"), Button.inline("Материалы", b"/mosh_materials"), Button.inline("Сайт", b"/mosh_site")]
+                [Button.inline("Напоминание", b"/mosh_reminder"), Button.inline("Материалы", b"/mosh_materials"), Button.inline("Сайт", b"/mosh_site")],
+                [Button.inline("Факультативы по подготовке", b"/mosh_electives"), Button.inline("Об олимпиаде", b"/mosh_info")]
             ]
             await event.respond("МОШ:", buttons=buttons)
             user_selections[chat_id]["subject_type"] = "МОШ"
@@ -142,7 +163,8 @@ async def main():
         async def vseross(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("Напоминание", b"/vseross_reminder"), Button.inline("Материалы", b"/vseross_materials"), Button.inline("Сайт", b"/vseross_site")]
+                [Button.inline("Нapomинание", b"/vseross_reminder"), Button.inline("Материалы", b"/vseross_materials"), Button.inline("Сайт", b"/vseross_site")],
+                [Button.inline("Факультативы по подготовке", b"/vseross_electives"), Button.inline("Об олимпиаде", b"/vseross_info")]
             ]
             await event.respond("Всеросс:", buttons=buttons)
             user_selections[chat_id]["subject_type"] = "Всеросс"
@@ -151,13 +173,89 @@ async def main():
         async def mosh_reminder(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
-            await event.respond(f"{subject_type} Напоминание")
+
+            if subject_type == "МОШ":
+                buttons = [
+                    [Button.inline("За неделю", b"/mosh_reminder_week"), Button.inline("За 3 дня", b"/mosh_reminder_3days"), Button.inline("За день", b"/mosh_reminder_1day")]
+                ]
+                await event.respond("Олимпиада МОШ будет проходить 4 ноября. Выберите, когда Вам напомнить о предстоящем событии:", buttons=buttons)
+
+                # Здесь добавьте код для записи выбора пользователя в базу данных
+                selected_index = user_selections.get(chat_id, {}).get("index")
+                if selected_index is not None:
+                    # Проверка, чтобы индекс записывался только один раз
+                    cursor.execute('INSERT OR REPLACE INTO user_reminders (user_id, index, days_before_olympiad) VALUES (?, ?, ?)',
+                                (chat_id, selected_index, 3))
+                    conn.commit()
+            else:
+                await event.respond("Напоминание доступно только для МОШ")
 
         @client.on(events.CallbackQuery(data=b"/vseross_reminder"))
         async def vseross_reminder(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
-            await event.respond(f"{subject_type} Напоминание")
+
+            if subject_type == "Всеросс":
+                buttons = [
+                    [Button.inline("За неделю", b"/vseross_reminder_week"), Button.inline("За 3 дня", b"/vseross_reminder_3days"), Button.inline("За день", b"/vseross_reminder_1day")]
+                ]
+                await event.respond("Олимпиада Всеросс будет проходить 10 ноября. Выберите, когда Вам напомнить о предстоящем событии:", buttons=buttons)
+
+        @client.on(events.CallbackQuery(data=b"/mosh_reminder_week"))
+        async def mosh_reminder_week(event):
+            chat_id = event.chat_id
+            await event.respond("Напомним Вам ровно в 12:00 по московскому времени за неделю до проведения.")
+
+        @client.on(events.CallbackQuery(data=b"/mosh_reminder_3days"))
+        async def mosh_reminder_3days(event):
+            chat_id = event.chat_id
+            await event.respond("Напомним Вам ровно в 12:00 по московскому времени за 3 дня до проведения.")
+
+        @client.on(events.CallbackQuery(data=b"/mosh_reminder_1day"))
+        async def mosh_reminder_1day(event):
+            chat_id = event.chat_id
+            await event.respond("Напомним Вам ровно в 12:00 по московскому времени за день до проведения.")
+
+        @client.on(events.CallbackQuery(data=b"/vseross_reminder_week"))
+        async def vseross_reminder_week(event):
+            chat_id = event.chat_id
+            await event.respond("Напомним Вам ровно в 12:00 по московскому времени за неделю до проведения.")
+
+        @client.on(events.CallbackQuery(data=b"/vseross_reminder_3days"))
+        async def vseross_reminder_3days(event):
+            chat_id = event.chat_id
+            await event.respond("Напомним Вам ровно в 12:00 по московскому времени за 3 дня до проведения.")
+
+        @client.on(events.CallbackQuery(data=b"/vseross_reminder_1day"))
+        async def vseross_reminder_1day(event):
+            chat_id = event.chat_id
+            await event.respond("Напомним Вам ровно в 12:00 по московскому времени за день до проведения.")
+
+        @client.on(events.CallbackQuery(data=b"/send_reminder"))
+        async def send_reminder(user_id):
+            # Здесь вы можете получить информацию о пользователе, олимпиаде и днях до олимпиады из базы данных SQL
+            conn = sqlite3.connect('user_reminders.db')
+            cursor = conn.cursor()
+
+            # Получить информацию о пользователе
+            cursor.execute("SELECT olympiad_index, days_before FROM user_reminders WHERE user_id=?", (user_id,))
+            result = cursor.fetchone()
+
+            if result:
+                olympiad_index, days_before = result
+                # Получите информацию о конкретной олимпиаде по olympiad_index
+                # Затем, используя полученные данные, сформируйте сообщение с напоминанием
+                # и отправьте его пользователю в нужное время
+
+                # Пример: Получение информации о конкретной олимпиаде
+                # olympiad_data = get_olympiad_data(olympiad_index)
+
+                # Здесь формируется сообщение с напоминанием
+                message = f"Напоминание об олимпиаде {olympiad_data['name']}, которая пройдет через {days_before} дней"
+
+                # Затем отправка сообщения пользователю (здесь нужно использовать ваш код для отправки сообщений)
+
+            conn.close()
 
         @client.on(events.CallbackQuery(data=b"/mosh_materials"))
         async def mosh_materials(event):
@@ -184,6 +282,34 @@ async def main():
                 await event.respond("Архив заданий Всеросс", buttons=[Button.url("Материалы", url)])
             else:
                 await event.respond("Ссылка не найдена")
+
+        @client.on(events.CallbackQuery(data=b"/mosh_electives"))
+        async def mosh_electives(event):
+            chat_id = event.chat_id
+            days_of_week = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
+            buttons = [Button.inline(day, f"/elective_{day}") for day in days_of_week]
+            await event.respond("Выберите удобный день:", buttons=buttons)
+
+        @client.on(events.CallbackQuery(data=b"/mosh_info"))
+        async def mosh_info(event):
+            chat_id = event.chat_id
+            subject_type = user_selections.get(chat_id, {}).get("subject_type")
+            
+            if subject_type == "МОШ":
+                message = "Московская олимпиада школьников (МОШ) - это престижное соревнование, проводимое в Москве. "
+                message += "Она предоставляет школьникам уникальную возможность проявить свои знания и навыки в различных предметах. "
+                message += "Участие в МОШ может открыть двери в лучшие образовательные учреждения страны. "
+                message += "Для получения подробной информации посетите официальный сайт МОШ."
+                
+            elif subject_type == "Всеросс":
+                message = "Всероссийская олимпиада школьников - это масштабное мероприятие, которое объединяет школьников "
+                message += "из разных регионов России. Она позволяет выявить и поддержать талантливых учеников. "
+                message += "Для получения подробной информации посетите официальный сайт Всеросс."
+                
+            else:
+                message = "Информация об олимпиаде не доступна. Пожалуйста, выберите предмет и тип олимпиады."
+            
+            await event.respond(message)
 
         @client.on(events.CallbackQuery(data=b"/mosh_site"))
         async def mosh_site(event):
