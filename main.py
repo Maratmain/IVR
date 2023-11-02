@@ -1,6 +1,4 @@
-api_id = 26730332
-api_hash = '444cac746aea62c94690b4217f412c9e'
-bot_token = '6643259676:AAHuAQXWS4dZZSV17ql6vP2v19cxaBpWMbc'
+
 
 from telethon.sync import TelegramClient, events
 from telethon.tl import functions
