@@ -226,10 +226,10 @@ async def main():
         async def economics(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")]
-                [Button.inline("", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")]
-                [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")]
-                [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")]
+                [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")],
+                [Button.inline("", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")],
+                [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")],
+                [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")],
                 [Button.inline("МОШ", b"/mosh_econ"), Button.inline("ВОШ", b"/vosh_econ")]
             ]
             await event.respond("Экономика:", buttons=buttons)
@@ -238,7 +238,7 @@ async def main():
         #######################################################################################
         # Модуль математических олимпиад
         # При выборе ММО
-        @client.on(events.CallbackQuery(data=b"/mmo"))
+        @client.on(events.CallbackQuery(data=b"/mmo_math"))
         async def mmo_math(event):
             chat_id = event.chat_id
             buttons = [
@@ -336,18 +336,18 @@ async def main():
 
 
         # При выборе Турнира городов
-        @client.on(events.CallbackQuery(data=b"/vosh_math"))
-        async def vosh_math(event):
+        @client.on(events.CallbackQuery(data=b"/turgor"))
+        async def turgor(event):
             chat_id = event.chat_id
             buttons = [
-                [Button.inline("Напоминание", b"/vosh_math_reminder"), Button.inline("Материалы", b"/vosh_math_materials"), Button.inline("Сайт", b"/vosh_math_site")],
-                [Button.inline("Факультативы по подготовке", b"/math_electives"), Button.inline("Об олимпиаде", b"/vosh_math_info")]
+                [Button.inline("Материалы", b"/turgor_materials"), Button.inline("Сайт", b"/turgor_site")],
+                [Button.inline("Факультативы по подготовке", b"/math_electives"), Button.inline("Об олимпиаде", b"/turgor_info")]
             ]
             await event.respond("ВОШ:", buttons=buttons)
             user_selections[chat_id]["subject_type"] = "ВОШ"
 
-        @client.on(events.CallbackQuery(data=b"/vosh_math_materials"))
-        async def vosh_math_materials(event):
+        @client.on(events.CallbackQuery(data=b"/turgor_materials"))
+        async def turgor_materials(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
             subject = user_selections.get(chat_id, {}).get("subject")
@@ -357,8 +357,8 @@ async def main():
             else:
                 await event.respond("Архив не найден")
 
-        @client.on(events.CallbackQuery(data=b"/vosh_math_site"))
-        async def vosh_math_site(event):
+        @client.on(events.CallbackQuery(data=b"/turgor_site"))
+        async def turgor_site(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
             subject = user_selections.get(chat_id, {}).get("subject")
@@ -369,8 +369,8 @@ async def main():
             else:
                 await event.respond("Сайт не найден")
 
-        @client.on(events.CallbackQuery(data=b"/vosh_math_info"))
-        async def vosh_math_info(event):
+        @client.on(events.CallbackQuery(data=b"/turgor_info"))
+        async def turgor_info(event):
             chat_id = event.chat_id
             subject_type = user_selections.get(chat_id, {}).get("subject_type")
                     
